@@ -1,2 +1,2 @@
 # sql-helper
-Encapsulates common features such as backups
+Encapsulates common operations such as backups
