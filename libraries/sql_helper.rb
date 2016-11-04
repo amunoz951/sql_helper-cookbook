@@ -48,7 +48,7 @@ module SqlHelper
     query_messages = result.stdout.strip
     query_results = query_messages.slice!(/\[\s*\{.*\}\s*\]/) # Separate array of hashes from other output
     raise query_messages if %w(error exception).any? { |w| query_messages.downcase.include?(w) }
-    Chef::Log.info "\n#{query_messages}\n" if show_output
+    Chef::Log.info "Query output: \n#{query_messages}\n" if show_output
 
     case query_type
     when 'ExecuteReader'

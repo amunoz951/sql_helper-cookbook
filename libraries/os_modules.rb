@@ -55,8 +55,10 @@ module WindowsConfiguration
     directory.strip.gsub(/[\x00\*\?\"<>\|]/, '_')
   end
 
-  require 'Win32API'
-  GetDiskFreeSpaceEx = Win32API.new('kernel32', 'GetDiskFreeSpaceEx', 'PPPP', 'I')
+  if Chef::Platform.windows? && !defined? GetDiskFreeSpaceEx
+    require 'Win32API'
+    GetDiskFreeSpaceEx = Win32API.new('kernel32', 'GetDiskFreeSpaceEx', 'PPPP', 'I')
+  end
 
   def get_disk_free_space(path)
     raise 'Cannot check free space for path provided. Path is empty or nil.' if path.nil? || path.empty? || path == 'null'
