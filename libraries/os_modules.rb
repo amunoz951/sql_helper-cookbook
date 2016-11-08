@@ -97,6 +97,6 @@ module WindowsConfiguration
 
   # Ensures that the path ends with a slash. Only directories should be passed
   def ensure_closing_slash(path)
-    "#{path}\\" unless path[-1] == '\\'
+    path.nil? || path.empty? || path[-1] == '\\' ? path : "#{path}\\"
   end
 end

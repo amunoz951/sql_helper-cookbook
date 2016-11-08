@@ -81,9 +81,16 @@ module SqlHelper
   end
 
   def get_sql_server_settings(connection_string)
+    extend WindowsConfiguration
     get_sql_settings_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/GetSQLSettings.sql")
     sql_server_settings = execute_reader(connection_string, get_sql_settings_script, false).first
+    direct_connection_string = connection_string.gsub(sql_server_settings['DataSource'], sql_server_settings['ServerName'])
+    connection_string.gsub!(sql_server_settings['ServerName'], sql_server_settings['DataSource'])
+    sql_server_settings['direct_connection_string'] = direct_connection_string # Does not use AlwaysOn listener
     sql_server_settings['connection_string'] = connection_string
+    sql_server_settings['DataDir'] = ensure_closing_slash(sql_server_settings['DataDir'])
+    sql_server_settings['LogDir'] = ensure_closing_slash(sql_server_settings['LogDir'])
+    sql_server_settings['BackupDir'] = ensure_closing_slash(sql_server_settings['BackupDir'])
     sql_server_settings
   end
 
@@ -143,7 +150,7 @@ module SqlHelper
     backup_files_results = execute_reader(sql_server_settings['connection_string'], sql_script)
     backup_files = []
     backup_files_results.each do |file|
-      backup_files.push("#{ensure_closing_slash(sql_server_settings['BackupDir'])}#{file['FileName']}")
+      backup_files.push("#{sql_server_settings['BackupDir']}#{file['FileName']}")
     end
     backup_files
   end
@@ -164,12 +171,29 @@ module SqlHelper
   end
 
   def run_sql_as_job(connection_string, sql_script, sql_job_name, sql_job_owner = 'sa')
+    ensure_sql_agent_is_running(connection_string)
     values = { 'sqlquery' => sql_script.gsub('\'', '\'\''),
                'jobname' => sql_job_name,
                'jobowner' => sql_job_owner }
     sql_job_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/CreateSQLJob.sql")
     sql_job_script = insert_values(sql_job_script, values)
     execute_non_query(connection_string, sql_job_script)
+  end
+
+  def ensure_sql_agent_is_running(connection_string)
+    sql_script = <<-EOS
+      IF EXISTS (  SELECT 1 FROM master.dbo.sysprocesses WHERE program_name = N'SQLAgent - Generic Refresher')
+      BEGIN
+        SELECT 1 AS 'SQLServerAgentRunning'
+      END
+      ELSE
+      BEGIN
+        SELECT 0 AS 'SQLServerAgentRunning'
+      END
+    EOS
+
+    sql_server_settings = get_sql_server_settings(connection_string)
+    raise "SQL Agent is not running on #{sql_server_settings['DataSource']}!" if execute_scalar(connection_string, sql_script).strip == '0'
   end
 
   # Ensures a connection string is using integrated security instead of SQL Authentication.

@@ -3,6 +3,7 @@ SET NOCOUNT ON
 DECLARE @datafiledir nvarchar(255)
 DECLARE @logfiledir nvarchar(255)
 DECLARE @bkupfiledir nvarchar(255)
+DECLARE @bkupdrive nvarchar(3)
 DECLARE @sqlcompression bit
 
 -- Data files section
@@ -12,7 +13,51 @@ where physical_name like '%sqldata%' and type_desc = 'ROWS'
 select Top (1) @logfiledir = reverse(substring(reverse(physical_name), charindex('\', reverse(physical_name)),LEN(physical_name) -1)) from sys.master_files
 where physical_name like '%sqllog%' AND type_desc = 'LOG'
 
-SET @bkupfiledir = LEFT(@datafiledir, LEN(@datafiledir)-5) + 'backup\'
+IF @datafiledir IS NULL
+BEGIN
+	EXEC master.dbo.xp_instance_regread
+	N'HKEY_LOCAL_MACHINE'
+	, N'Software\Microsoft\MSSQLServer\MSSQLServer'
+	, N'DefaultData'
+	, @datafiledir output;
+END
+
+IF @datafiledir IS NULL
+BEGIN
+	EXEC master.dbo.xp_instance_regread
+	N'HKEY_LOCAL_MACHINE'
+	, N'Software\Microsoft\MSSQLServer\Setup'
+	, N'SQLDataRoot'
+	, @datafiledir output;
+END
+
+IF @logfiledir IS NULL
+BEGIN
+	EXEC master.dbo.xp_instance_regread
+	N'HKEY_LOCAL_MACHINE'
+	, N'Software\Microsoft\MSSQLServer\MSSQLServer'
+	, N'DefaultLog'
+	, @logfiledir output;
+END
+
+SET @bkupdrive = LEFT(@datafiledir, 3)
+SET @bkupfiledir = @bkupdrive + 'sqlbackup\'
+
+IF @bkupdrive IS NOT NULL
+BEGIN
+	DECLARE @subdirs TABLE (Directory varchar(200))
+	INSERT INTO @subdirs
+	EXEC master.dbo.xp_subdirs @bkupdrive
+
+	IF NOT EXISTS(SELECT * FROM @subdirs WHERE Directory = 'sqlbackup')
+	BEGIN
+		EXEC master.dbo.xp_instance_regread
+		N'HKEY_LOCAL_MACHINE'
+		, N'Software\Microsoft\MSSQLServer\MSSQLServer'
+		, N'BackupDirectory'
+		, @bkupfiledir output;
+	END
+END
 
 -- Compression section
 DECLARE @CompressionValue sql_variant
@@ -72,4 +117,4 @@ END
 
 SELECT @datafiledir AS [DataDir], @logfiledir AS [LogDir], @bkupfiledir AS [BackupDir],
  COALESCE(@CompressionValue, 0) AS [CompressBackup], COALESCE(@distributor_name, 'none') AS [Distributor],
- COALESCE(@AlwaysOnEnabled, 0) AS [AlwaysOnEnabled], COALESCE(@DataSource, @@SERVERNAME) AS [DataSource]
+ COALESCE(@AlwaysOnEnabled, 0) AS [AlwaysOnEnabled], @@SERVERNAME AS [ServerName], COALESCE(@DataSource, @@SERVERNAME) AS [DataSource]
