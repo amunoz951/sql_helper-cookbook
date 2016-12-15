@@ -43,15 +43,15 @@ SET @i = @size_increment
 
 WHILE (@i < @database_size)
 BEGIN
-	IF @disk_files is null SET @disk_files = ' DISK = N''' + @backup_location + '\' + @backup_name + '.part1.bak'''
+	IF @disk_files is null SET @disk_files = ' DISK = N''' + @backup_location + @backup_name + '.part1.bak'''
 	SET @file_counter = @file_counter + 1
-	SET @disk_files = @disk_files + ',  DISK = N''' + @backup_location + '\' + @backup_name + '.part' + CONVERT(nvarchar(2),@file_counter) + '.bak'''
+	SET @disk_files = @disk_files + ',  DISK = N''' + @backup_location + @backup_name + '.part' + CONVERT(nvarchar(2),@file_counter) + '.bak'''
 	SET @i = @i + @size_increment
 END
 
 IF (@file_counter = 1)
 BEGIN
-	SET @disk_files = ' DISK = N''' + @backup_location + '\' + @backup_name + '.bak'''
+	SET @disk_files = ' DISK = N''' + @backup_location + @backup_name + '.bak'''
 END
 
 SET @sql = 'BACKUP DATABASE [' + @database_name + '] TO  ' + @disk_files + ' WITH' + @compression_text + ' NOFORMAT, COPY_ONLY, NOINIT,  NAME = N''' + @database_name + '-Full Database Backup'', SKIP, NOREWIND, NOUNLOAD,  STATS = 10'
