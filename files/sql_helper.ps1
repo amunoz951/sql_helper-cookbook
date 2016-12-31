@@ -1,3 +1,10 @@
+# PowerShell v2.0 compatible version of [string]::IsNullOrWhitespace.
+function StringIsNullOrWhitespace([string] $string)
+{
+    if ($string -ne $null) { $string = $string.Trim() }
+    return [string]::IsNullOrEmpty($string)
+}
+
 # Returns row(s) affected
 function ExecuteNonQuery {
 param(
@@ -51,7 +58,7 @@ param(
   $command.Connection = $connection
   foreach ($currentQuery in $queries) {
     $command.CommandText = $currentQuery
-    if ([string]::IsNullOrWhiteSpace($command.CommandText)) { continue }
+    if (StringIsNullOrWhitespace($command.CommandText)) { continue }
     if ($queryType -eq 'scalar') {
       $result = '[ { ''result'' => ''' + $command.ExecuteScalar() + ''' } ]'
     } elseif ($queryType -eq 'reader') {
