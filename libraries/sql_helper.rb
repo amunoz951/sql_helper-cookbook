@@ -30,7 +30,7 @@ module SqlHelper
             $showOutput = $#{show_output}
             $result = #{query_type} $connectionString $sqlQuery $showOutput
 
-            $result
+            Write-Host $result
 
             EOS
 
@@ -47,9 +47,9 @@ module SqlHelper
   def process_powershell_results(result, query_type, show_output)
     query_messages = result.stdout.strip
     Chef::Log.debug "Query output: #{query_messages}"
-    query_results = query_messages.slice!(/\[\s*\{.*\}\s*\]/) # Separate array of hashes from other output
+    query_results = query_messages.slice!(/\[\s*\{[\S\s]*\}\s*\]/) # Separate array of hashes from other output
     raise query_messages if %w(error exception).any? { |w| query_messages.downcase.include?(w) }
-    Chef::Log.debug "Query reqults: \n#{query_messages}\n"
+    Chef::Log.debug "Query results: \n#{query_results}\n"
     Chef::Log.debug "Query messages: \n#{query_messages}\n" unless show_output
     Chef::Log.info "Query messages: \n#{query_messages}\n" if show_output
 
