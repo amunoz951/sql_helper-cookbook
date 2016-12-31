@@ -84,6 +84,8 @@ module SqlHelper
     extend WindowsConfiguration
     get_sql_settings_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/GetSQLSettings.sql")
     sql_server_settings = execute_reader(connection_string, get_sql_settings_script, false).first
+    Chef::Log.debug "sql_server_settings: #{sql_server_settings}"
+    Chef::Log.debug "windows authentication: #{%w(pwd password).any? { |pwd| connection_string.include?(pwd) }}"
     return nil if sql_server_settings.nil? || sql_server_settings['ServerName'].nil?
     direct_connection_string = connection_string.gsub(sql_server_settings['DataSource'], sql_server_settings['ServerName'])
     connection_string.gsub!(sql_server_settings['ServerName'], sql_server_settings['DataSource'])
@@ -98,7 +100,7 @@ module SqlHelper
   def get_backup_sql_server_settings(connection_string)
     sql_server_settings = get_sql_server_settings(connection_string)
     sql_server_settings = get_sql_server_settings(to_integrated_security(connection_string)) if sql_server_settings.nil? || sql_server_settings['BackupDir'] == 'null'
-    raise "FATAL: Current user #{ENV['user'] || ENV['username']} does not have access to backup database!" if sql_server_settings['BackupDir'] == 'null'
+    raise "FATAL: Current user #{ENV['user'] || ENV['username']} does not have access to backup database!" if sql_server_settings.nil? || sql_server_settings['BackupDir'] == 'null'
     sql_server_settings
   end
 
