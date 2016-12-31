@@ -84,6 +84,7 @@ module SqlHelper
     extend WindowsConfiguration
     get_sql_settings_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/GetSQLSettings.sql")
     sql_server_settings = execute_reader(connection_string, get_sql_settings_script, false).first
+    return if sql_server_settings.nil? || sql_server_settings['ServerName'].nil?
     direct_connection_string = connection_string.gsub(sql_server_settings['DataSource'], sql_server_settings['ServerName'])
     connection_string.gsub!(sql_server_settings['ServerName'], sql_server_settings['DataSource'])
     sql_server_settings['direct_connection_string'] = direct_connection_string # Does not use AlwaysOn listener
