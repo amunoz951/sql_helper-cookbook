@@ -46,9 +46,12 @@ module SqlHelper
   # Parse the results of the powershell script to extract values from other text
   def process_powershell_results(result, query_type, show_output)
     query_messages = result.stdout.strip
+    Chef::Log.debug "Query output: #{query_messages}"
     query_results = query_messages.slice!(/\[\s*\{.*\}\s*\]/) # Separate array of hashes from other output
     raise query_messages if %w(error exception).any? { |w| query_messages.downcase.include?(w) }
-    Chef::Log.info "Query output: \n#{query_messages}\n" if show_output
+    Chef::Log.debug "Query reqults: \n#{query_messages}\n"
+    Chef::Log.debug "Query messages: \n#{query_messages}\n" unless show_output
+    Chef::Log.info "Query messages: \n#{query_messages}\n" if show_output
 
     case query_type
     when 'ExecuteReader'
@@ -58,13 +61,14 @@ module SqlHelper
       return nil if query_results.nil?
       evaluated_result = evaluate_sql_results(query_results)
       return nil if evaluated_result.nil? || evaluated_result.empty?
-      evaluated_result.first['result']
+      evaluated_result.first['result'] # Return a scalar value or rows affected
     end
   end
 
   # Evaluate the extracted values from the powershell results
   def evaluate_sql_results(query_results)
     formatted_results = query_results.strip.gsub('\\') { '\\\\' }
+    Chef::Log.debug "evaluate_sql_results: #{formatted_results}"
     begin
       # rubocop:disable Lint/Eval
       eval(formatted_results) # TODO: Find safer way to convert results to hash - might require doing sql connection in ruby
