@@ -10,7 +10,8 @@ function ExecuteNonQuery {
 param(
     [Parameter(Mandatory=$True,Position=1)] [string]$cnstr,
     [Parameter(Mandatory=$True,Position=2)] [string]$query,
-    [Parameter(Mandatory=$False,Position=3)] [bool]$showOutput = $true
+    [Parameter(Mandatory=$False,Position=3)] [bool]$showOutput = $true,
+    [Parameter(Mandatory=$False,Position=4)] [bool]$ignoreErrors = $false
 )
   return ExecuteQuery $cnstr $query 'nonquery' $showOutput
 }
@@ -20,7 +21,8 @@ function ExecuteScalar {
 param(
     [Parameter(Mandatory=$True,Position=1)] [string]$cnstr,
     [Parameter(Mandatory=$True,Position=2)] [string]$query,
-    [Parameter(Mandatory=$False,Position=3)] [bool]$showOutput = $true
+    [Parameter(Mandatory=$False,Position=3)] [bool]$showOutput = $true,
+    [Parameter(Mandatory=$False,Position=4)] [bool]$ignoreErrors = $false
 )
   return ExecuteQuery $cnstr $query 'scalar' $showOutput
 }
@@ -30,7 +32,8 @@ function ExecuteReader {
 param(
     [Parameter(Mandatory=$True,Position=1)] [string]$cnstr,
     [Parameter(Mandatory=$True,Position=2)] [string]$query,
-    [Parameter(Mandatory=$False,Position=3)] [bool]$showOutput = $true
+    [Parameter(Mandatory=$False,Position=3)] [bool]$showOutput = $true,
+    [Parameter(Mandatory=$False,Position=4)] [bool]$ignoreErrors = $false
 )
   return ExecuteQuery $cnstr $query 'reader' $showOutput
 }
@@ -41,15 +44,18 @@ param(
     [Parameter(Mandatory=$True,Position=1)] [string]$cnstr,
     [Parameter(Mandatory=$True,Position=2)] [string]$query,
     [Parameter(Mandatory=$True,Position=3)] [string]$queryType,
-    [Parameter(Mandatory=$False,Position=4)] [bool]$showOutput = $true
+    [Parameter(Mandatory=$False,Position=4)] [bool]$showOutput = $true,
+    [Parameter(Mandatory=$False,Position=5)] [bool]$ignoreErrors = $false
 )
   $Connection = New-Object System.Data.SQLClient.SQLConnection
   $Connection.ConnectionString = $cnstr
 
-  # Attach the InfoMessage Event Handler to the connection
-  $handler = [System.Data.SqlClient.SqlInfoMessageEventHandler] {param($sender, $event) Write-Host $event.Message };
-  $Connection.add_InfoMessage($handler);
-  $Connection.FireInfoMessageEventOnUserErrors = $true;
+  # Attach the InfoMessage Event Handler to the connection if ignoring errors
+  if ($ignoreErrors -eq $true) {
+    $handler = [System.Data.SqlClient.SqlInfoMessageEventHandler] {param($sender, $event) Write-Host $event.Message };
+    $Connection.add_InfoMessage($handler);
+    $Connection.FireInfoMessageEventOnUserErrors = $false;
+  }
 
   # Let chef raise any exceptions
   $connection.Open()

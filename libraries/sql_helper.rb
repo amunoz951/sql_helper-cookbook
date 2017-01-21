@@ -4,25 +4,26 @@ module SqlHelper
   # @sql_helper_created ||= false
 
   # Returns row(s) affected
-  def execute_non_query(connection_string, sql_query, show_output = true)
-    execute_query_common(connection_string, sql_query, 'ExecuteNonQuery', show_output)
+  def execute_non_query(connection_string, sql_query, show_output = true, ignore_errors = false)
+    execute_query_common(connection_string, sql_query, 'ExecuteNonQuery', show_output, ignore_errors)
   end
 
   # returns single scalar value
-  def execute_scalar(connection_string, sql_query, show_output = false)
-    execute_query_common(connection_string, sql_query, 'ExecuteScalar', show_output)
+  def execute_scalar(connection_string, sql_query, show_output = false, ignore_errors = false)
+    execute_query_common(connection_string, sql_query, 'ExecuteScalar', show_output, ignore_errors)
   end
 
   # returns hash of columns/values for first row found in query
-  def execute_reader(connection_string, sql_query, show_output = false)
-    execute_query_common(connection_string, sql_query, 'ExecuteReader', show_output)
+  def execute_reader(connection_string, sql_query, show_output = false, ignore_errors = false)
+    execute_query_common(connection_string, sql_query, 'ExecuteReader', show_output, ignore_errors)
   end
 
   # executes a scalar or nonquery sql command - Do not call this directly from outside the module
-  def execute_query_common_powershell(connection_string, sql_query, query_type, show_output)
+  def execute_query_common_powershell(connection_string, sql_query, query_type, show_output, ignore_errors)
     # create_sql_helper_script(cache_path)
 
     compiled_ps_sql_script = <<-EOS
+            #{'$ignoreErrors = $true' if ignore_errors}
             . \"#{Chef::Config[:file_cache_path]}/cookbooks/sql_helper/files/sql_helper.ps1\"
 
             $sqlQuery = '#{to_utf8(sql_query).gsub('\'', '\'\'')}'
@@ -80,8 +81,8 @@ module SqlHelper
 
   # executes a scalar or nonquery sql command - Do not call this directly from outside the module
   # TODO: Add linux support
-  def execute_query_common(connection_string, sql_query, query_type, show_output = nil)
-    execute_query_common_powershell(connection_string, sql_query, query_type, show_output)
+  def execute_query_common(connection_string, sql_query, query_type, show_output = nil, ignore_errors = false)
+    execute_query_common_powershell(connection_string, sql_query, query_type, show_output, ignore_errors)
   end
 
   def get_sql_server_settings(connection_string)

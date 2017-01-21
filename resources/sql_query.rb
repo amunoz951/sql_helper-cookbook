@@ -6,6 +6,7 @@ property :sql_query, String
 property :sql_queries, [String, Array], default: lazy { [sql_query] } # Provide 1 or more T-SQL queries to be executed
 property :guard_query, String, default: 'SELECT 0' # Provide SELECT statement. If statement returns null, empty, or 0, guard is false and main query will be run.
 property :show_output, [TrueClass, FalseClass], default: true
+property :ignore_errors, [TrueClass, FalseClass], default: false
 
 # Values to be replaced in the queries
 # EG: { 'cust' => connection_id, 'database' => database_name } replaces $(cust) and $(database) in the script with their respective values.
@@ -29,7 +30,7 @@ action :run do
       raise 'Error: No SQL query provided!' if updated_sql_queries.all? { |i| i.nil? || i.empty? }
       Chef::Log.info 'Running SQL queries...'
       updated_sql_queries.each do |sql_query|
-        execute_non_query(connection_string, insert_values(sql_query, values), show_output)
+        execute_non_query(connection_string, insert_values(sql_query, values), show_output, ignore_errors)
       end
       Chef::Log.info 'Done.'
     end
