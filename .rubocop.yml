@@ -12,6 +12,8 @@ Metrics/ModuleLength:
     Max: 200
 Style/FileName:
     Enabled: false
+Style/EndOfLine:
+    Enabled: false
 AllCops:
     Exclude:
       - 'Policyfile.rb'

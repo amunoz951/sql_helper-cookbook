@@ -1,3 +1,4 @@
+require 'JSON'
 
 # common methods for executing sql commands
 module SqlHelper
@@ -9,9 +10,9 @@ module SqlHelper
   end
 
   # returns single scalar value
-  def execute_scalar(connection_string, sql_query, show_output = false, ignore_errors = false)
-    execute_query_common(connection_string, sql_query, 'ExecuteScalar', show_output, ignore_errors)
-  end
+  # def execute_scalar(connection_string, sql_query, show_output = false, ignore_errors = false)
+  #   execute_query_common(connection_string, sql_query, 'ExecuteScalar', show_output, ignore_errors)
+  # end
 
   # returns hash of columns/values for first row found in query
   def execute_reader(connection_string, sql_query, show_output = false, ignore_errors = false)
@@ -42,6 +43,29 @@ module SqlHelper
     raise result.stderr unless result.stderr.empty?
 
     process_powershell_results(result, query_type, show_output)
+  end
+
+  def execute_scalar(connection_string, sql_query)
+    result = execute_query(connection_string, sql_query)
+    # Return first column of first row
+    result.nil? || result.values.first.nil? || result.values.first.first.nil? || result.values.first.first.values.nil? ? '' : result.values.first.first.values.first
+  end
+
+  def execute_query(connection_string, sql_query)
+    ps_script =
+      <<-EOS
+        #{SqlHelper.powershell_functions}
+
+        $connectionString = '#{connection_string}'
+        $sqlCommand = '#{sql_query.gsub('\'', '\'\'')}'
+        $dataset = Invoke-SQL -connectionString $connectionString -sqlCommand $sqlCommand
+        ConvertSqlDatasetTo-Json -dataset $dataset
+      EOS
+      .strip
+
+    result = powershell_out(ps_script)
+    raise result.stderr unless result.stderr.empty?
+    result.stdout.empty? ? {} : JSON.parse(result.stdout)
   end
 
   # Parse the results of the powershell script to extract values from other text
@@ -210,7 +234,7 @@ module SqlHelper
     new_connection_string = ''
     sql_auth_parts = ['user id', 'uid', 'password', 'pwd', 'integrated security', 'trusted_connection']
     parts.each { |part| new_connection_string << "#{part};" unless part.downcase.start_with?(*sql_auth_parts) }
-    "#{new_connection_string}Integrated Security=true;"
+    "#{new_connection_string}Integrated Security=SSPI;"
   end
 
   # # Create sql helper powershell script
