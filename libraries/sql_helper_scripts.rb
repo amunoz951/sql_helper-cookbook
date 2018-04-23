@@ -27,7 +27,8 @@ module SqlHelper
 
           $convertedTables = '{ '
           foreach ($table in $dataset.DataSet.Tables) {
-            $convertedTable = (($table | select $table.Columns.ColumnName) | ConvertTo-Json -Compress).Trim()
+            $convertedTable = ($table | select $table.Columns.ColumnName) | ConvertTo-Json -Compress
+            if (!$convertedTable) { $convertedTable = '[]' }
             if (!$convertedTable.StartsWith('[')) { $convertedTable = "[ $convertedTable ]" } # Convert to Array if it's not
             $convertedTables += '"' + $table.TableName + '": ' + $convertedTable + ','
           }

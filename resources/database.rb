@@ -17,10 +17,10 @@ action :backup do
   extend SqlHelper
 
   sql_server_settings = get_backup_sql_server_settings(connection_string)
-  base_backup_name = "#{database_name}_#{Time.now.strftime('%Y%m%d')}"
+  backup_basename = "#{database_name}_#{Time.now.strftime('%Y%m%d')}"
 
-  primary_backup_files = sql_server_backup_files(sql_server_settings, base_backup_name)
-  backup_files = primary_backup_files.empty? ? get_unc_backup_files(alternate_destination, base_backup_name) : primary_backup_files
+  primary_backup_files = sql_server_backup_files(sql_server_settings, backup_basename)
+  backup_files = primary_backup_files.empty? ? get_unc_backup_files(alternate_destination, backup_basename) : primary_backup_files
 
   unless backup_files.empty?
     sql_backup_header = get_sql_backup_headers(connection_string, backup_files).first
@@ -50,7 +50,7 @@ action :backup do
                           '  Backup manually before retrying or specify to bypass backup in customers json.'
                   end
 
-  run_sql_backup(connection_string, backup_folder, database_name, base_backup_name, sql_server_settings['CompressBackup'])
+  run_sql_backup(connection_string, backup_folder, database_name, backup_basename, sql_server_settings['CompressBackup'])
 
   timeout_increment = 5
   backup_status_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/BackupProgress.sql")
@@ -68,10 +68,10 @@ action :check_backup_status do
   extend SqlHelper
 
   sql_server_settings = get_backup_sql_server_settings(connection_string)
-  base_backup_name = "#{database_name}_#{Time.now.strftime('%Y%m%d')}"
+  backup_basename = "#{database_name}_#{Time.now.strftime('%Y%m%d')}"
 
-  primary_backup_files = sql_server_backup_files(sql_server_settings, base_backup_name)
-  backup_files = primary_backup_files.empty? ? get_unc_backup_files(alternate_destination, base_backup_name) : primary_backup_files
+  primary_backup_files = sql_server_backup_files(sql_server_settings, backup_basename)
+  backup_files = primary_backup_files.empty? ? get_unc_backup_files(alternate_destination, backup_basename) : primary_backup_files
 
   if backup_files.empty?
     node.run_state["#{database_name}_backup"] = 'incomplete'
@@ -95,12 +95,12 @@ action :check_backup_status do
   Chef::Log.info 'Backup is current.'
 end
 
-def get_unc_backup_files(backup_folder, base_backup_name)
-  backup_files = if ::File.exist?("#{backup_folder}\\#{base_backup_name}.bak")
-                   ["#{backup_folder}\\#{base_backup_name}.bak"]
+def get_unc_backup_files(backup_folder, backup_basename)
+  backup_files = if ::File.exist?("#{backup_folder}\\#{backup_basename}.bak")
+                   ["#{backup_folder}\\#{backup_basename}.bak"]
                  else
-                   Dir.glob("#{backup_folder}\\#{base_backup_name}.part*.bak")
+                   Dir.glob("#{backup_folder}\\#{backup_basename}.part*.bak")
                  end
-  backup_files = Dir.glob("#{backup_folder}\\#{base_backup_name}*.bak") if backup_files.empty?
+  backup_files = Dir.glob("#{backup_folder}\\#{backup_basename}*.bak") if backup_files.empty?
   backup_files
 end

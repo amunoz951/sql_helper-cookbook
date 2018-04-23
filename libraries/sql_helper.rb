@@ -45,13 +45,13 @@ module SqlHelper
     process_powershell_results(result, query_type, show_output)
   end
 
-  def execute_scalar(connection_string, sql_query)
-    result = execute_query(connection_string, sql_query)
+  def self.execute_scalar(connection_string, sql_query)
+    result = execute_query(connection_string, sql_query, :first_row)
     # Return first column of first row
-    result.nil? || result.values.first.nil? || result.values.first.first.nil? || result.values.first.first.values.nil? ? '' : result.values.first.first.values.first
+    result.values.first || ''
   end
 
-  def execute_query(connection_string, sql_query)
+  def execute_query(connection_string, sql_query, return_type = :all_tables)
     ps_script =
       <<-EOS
         #{SqlHelper.powershell_functions}
@@ -65,7 +65,18 @@ module SqlHelper
 
     result = powershell_out(ps_script)
     raise result.stderr unless result.stderr.empty?
-    result.stdout.empty? ? {} : JSON.parse(result.stdout)
+    result_hash = if result.stdout.empty?
+                    {}
+                  else
+                    # Convert javascript dates to ruby (powershell's ConvertTo-Json outputs dates in javascript format)
+                    # converted_stdout = result.stdout.gsub(%r{(/Date\()(\d+)(\)/)}) { Time.at(Regexp.last_match[2].to_f / 1000.0).strftime('%Y-%m-%d %H:%M:%S') }
+                    converted_stdout = result.stdout.gsub(%r{(/Date\()(\d+)(\)/)}) { Time.at(Regexp.last_match[2].to_f / 1000.0).iso8601(9) }
+                    Time.at(sql_backup_header['BackupFinishDate'][%r{(?<=\/Date\()\d+(?=\)\/)}, 0].to_f / 1000.0)
+                    JSON.parse(converted_stdout)
+                  end
+    return result_hash.values.first if return_type == :first_table
+    return result_hash.values.first.first if return_type == :first_row
+    result_hash
   end
 
   # Parse the results of the powershell script to extract values from other text
@@ -174,9 +185,9 @@ module SqlHelper
     execute_reader(connection_string, sql_script)
   end
 
-  def sql_server_backup_files(sql_server_settings, base_backup_name)
+  def sql_server_backup_files(sql_server_settings, backup_basename)
     values = { 'targetfolder' => sql_server_settings['BackupDir'],
-               'bkupname' => base_backup_name }
+               'bkupname' => backup_basename }
     sql_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/GetBackupFiles.sql")
     sql_script = insert_values(sql_script, values)
     backup_files_results = execute_reader(sql_server_settings['connection_string'], sql_script)
@@ -188,18 +199,18 @@ module SqlHelper
   end
 
   # Returns a query to perform a database backup.
-  def run_sql_backup(connection_string, backup_folder, database_name, base_backup_name, compression)
+  def run_sql_backup(connection_string, backup_folder, database_name, backup_basename, compression)
     backup_status_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/BackupProgress.sql")
     return unless execute_reader(connection_string, backup_status_script).empty? # Return if a backup is in progress
 
     values = { 'bkupdbname' => database_name,
-               'bkupname' => base_backup_name,
+               'bkupname' => backup_basename,
                'compressbackup' => compression,
                'bkupdestdir' => backup_folder }
     sql_backup_script = ::File.read("#{Chef::Config['file_cache_path']}/cookbooks/sql_helper/files/BackupDatabase.sql")
     sql_backup_script = insert_values(sql_backup_script, values)
     Chef::Log.info "Backing up to: #{backup_folder}..."
-    run_sql_as_job(connection_string, sql_backup_script, "Backup: #{base_backup_name}")
+    run_sql_as_job(connection_string, sql_backup_script, "Backup: #{backup_basename}")
   end
 
   def run_sql_as_job(connection_string, sql_script, sql_job_name, sql_job_owner = 'sa')
