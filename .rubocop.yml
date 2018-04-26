@@ -10,9 +10,11 @@ Metrics/PerceivedComplexity:
     Max: 10
 Metrics/ModuleLength:
     Max: 200
+Metrics/ParameterLists:
+  CountKeywordArgs: false
 Style/FileName:
     Enabled: false
-Style/EndOfLine:
+Layout/EndOfLine:
     Enabled: false
 AllCops:
     Exclude:
