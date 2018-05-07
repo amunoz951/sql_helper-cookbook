@@ -14,6 +14,7 @@ module IOHelper
 
     def fatal(message)
       Chef::Log.fatal(message)
+      raise
     end
   end
 
@@ -33,7 +34,7 @@ module Settings
     {
       'datacenter' => '',
       'policy_group' => 'local',
-      'datacenters' => %w()
+      'datacenters' => %w(),
     }
   end
 

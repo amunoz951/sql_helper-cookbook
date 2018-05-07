@@ -48,12 +48,13 @@ module SqlHelper
     ps_script_file = "#{Settings.paths['cache_path']}/scripts/ps_script-thread_id-#{Thread.current.object_id}.ps1"
     FileUtils.mkdir_p ::File.dirname(ps_script_file)
     ::File.write(ps_script_file, ps_script)
-    result = IO.popen(['powershell.exe', "powershell -File \"#{ps_script_file}\""], &:read).strip # run sql
-    if result.include?('FullyQualifiedErrorId') || !$CHILD_STATUS.success?
-      IOHelper.logger.fatal('Exception executing sql query!')
-      raise "\n#{'-' * 120}\n\n#{result}\nConnectionString: '#{hide_connection_string_password(connection_string)}'\n#{'=' * 120}\n"
+    stdout, stderr, status = Open3.capture3('powershell.exe', "powershell -File \"#{ps_script_file}\"")
+
+    unless stderr.strip.empty? && status.exitstatus == 0
+      IOHelper.logger.fatal('Exception executing sql query!' \
+        "\n#{'-' * 114}\nexit code: #{status.exitstatus}\n#{stderr}\nConnectionString: '#{hide_connection_string_password(connection_string)}'\n#{'=' * 114}\n")
     end
-    convert_powershell_tables_to_hash(result, return_type)
+    convert_powershell_tables_to_hash(stdout, return_type)
   end
 
   def show_queries(sql_query)
