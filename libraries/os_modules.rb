@@ -69,7 +69,7 @@ module WindowsConfiguration
 
     free = [0].pack('Q')
     GetDiskFreeSpaceEx.call(root_folder, 0, 0, free)
-    free = free.unpack('Q').first
+    free = free.unpack1('Q')
 
     (free / 1024.0 / 1024.0).round(2)
   end
@@ -83,7 +83,7 @@ module WindowsConfiguration
 
     total = [0].pack('Q')
     GetDiskFreeSpaceEx.call(root_folder, 0, total, 0)
-    total = total.unpack('Q').first
+    total = total.unpack1('Q')
 
     (total / 1024.0 / 1024.0).round(2)
   end

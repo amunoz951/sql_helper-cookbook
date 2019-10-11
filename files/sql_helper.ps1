@@ -1,12 +1,17 @@
 function Invoke-SQL {
   param(
       [string] $connectionString = $(throw "Please specify a connection string"),
-      [string] $sqlCommand = $(throw "Please specify a query.")
+      [string] $sqlCommand = $(throw "Please specify a query."),
+      [string] $timeout = 172800
     )
 
   $sqlCommands = $sqlCommand -split "\n\s*GO\s*\n" # Split the query on each GO statement.
   $connection = new-object system.data.SqlClient.SQLConnection($connectionString)
+  $handler = [System.Data.SqlClient.SqlInfoMessageEventHandler] { param($sender, $event) Write-host $event.Message }
+  $connection.add_InfoMessage($handler)
+  $connection.FireInfoMessageEventOnUserErrors = $true
   $command = new-object system.data.sqlclient.sqlcommand($sqlCommand,$connection)
+  $command.CommandTimeout = $timeout
   $adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
   $connection.Open()
 
@@ -27,7 +32,7 @@ function ConvertSqlDatasetTo-Json {
       [object] $dataset = $(throw "Please specify a dataset")
     )
 
-  $convertedTables = '{ '
+  $convertedTables = 'json_tables:{ '
   foreach ($table in $dataset.DataSet.Tables) {
     $convertedTable = ($table | select $table.Columns.ColumnName) | ConvertTo-Json -Compress
     if (!$convertedTable) { $convertedTable = '[]' }
