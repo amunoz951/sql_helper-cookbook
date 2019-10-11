@@ -14,7 +14,6 @@ module IOHelper
 
     def fatal(message)
       Chef::Log.fatal(message)
-      raise
     end
   end
 
@@ -43,6 +42,8 @@ module Settings
       'cache_path' => "#{Chef::Config[:file_cache_path]}/sql_helper",
       'always_on_backup_temp_dir' => '',
       'script_dir' => "#{@script_dir.tr('/', '\\')}\\..\\files",
+      'powershell_helper_script' => "#{@script_dir}/../files/sql_helper.ps1",
+      'sql_script_dir' => "#{File.dirname(__FILE__)}/sql",
       'replication_scripts' => "#{Chef::Config[:file_cache_path]}/sql_helper/replication",
       'logins_export_folder' => "#{Chef::Config[:file_cache_path]}/sql_helper/logins",
     }
