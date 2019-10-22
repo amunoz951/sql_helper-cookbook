@@ -29,6 +29,7 @@ module SqlHelper
     IOHelper.logger.debug("Executing query with connection_string: \n\t#{hide_connection_string_password(connection_string_updated)}")
     IOHelper.logger.debug(sql_query) if @verbose && sql_query.length < 8096
     start_time = Time.now.strftime('%y%m%d_%H%M%S-%L')
+    FileUtils.mkdir_p "#{Settings.paths['cache_path']}/scripts"
     FileUtils.cp(Settings.paths['powershell_helper_script'], "#{Settings.paths['cache_path']}\\scripts\\sql_helper_#{start_time}.ps1")
     ps_script = <<-EOS.strip
         . "#{Settings.paths['cache_path']}\\scripts\\sql_helper_#{start_time}.ps1"
@@ -40,7 +41,6 @@ module SqlHelper
       EOS
 
     ps_script_file = "#{Settings.paths['cache_path']}/scripts/ps_script-thread_id-#{Thread.current.object_id}.ps1"
-    FileUtils.mkdir_p ::File.dirname(ps_script_file)
     ::File.write(ps_script_file, ps_script)
     retry_count = 0
     begin
