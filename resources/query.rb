@@ -1,4 +1,4 @@
-resource_name :sql_helper_query
+unified_mode true if respond_to?(:unified_mode)
 
 property :query_name, String, name_property: true
 property :connection_string, String, required: true
