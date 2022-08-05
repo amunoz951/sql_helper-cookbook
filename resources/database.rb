@@ -1,4 +1,4 @@
-resource_name :sql_helper_database
+unified_mode true if respond_to?(:unified_mode)
 
 property :database_name, String, name_property: true
 property :sql_server, String, required: true
