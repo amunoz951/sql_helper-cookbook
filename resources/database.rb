@@ -5,7 +5,8 @@ property :sql_server, String, required: true
 property :connection_string, String, required: true
 property :backup_start_time, [String, Time], required: true # The minimum timestamp a backup should have to be considered current
 property :free_space_threshold, Integer, default: 15 # minimum percent free space after backup required for primary destination
-property :alternate_destination, String, required: true # This should be a UNC path. In most cases this is a network share with ample space
+property :default_destination, String, required: true # This should be a UNC path. In most cases this is a network share with ample space
+deprecated_property_alias(:alternate_destination, :default_destination, 'The sql_helper_database property `alternate_destination` has been renamed to `default_destination`! Please update your cookbooks to use the new property name.')
 property :synchronous_timeout, Integer, default: 0 # How long to wait to see if backup completes in seconds
 
 default_action :backup
@@ -20,7 +21,7 @@ action :backup do
   backup_basename = "#{database_name}_#{Time.now.strftime('%Y%m%d')}"
 
   primary_backup_files = sql_server_backup_files(sql_server_settings, backup_basename)
-  backup_files = primary_backup_files.empty? ? get_unc_backup_files(alternate_destination, backup_basename) : primary_backup_files
+  backup_files = primary_backup_files.empty? ? get_unc_backup_files(default_destination, backup_basename) : primary_backup_files
 
   unless backup_files.empty?
     sql_backup_header = get_sql_backup_headers(connection_string, backup_files).first
@@ -35,18 +36,18 @@ action :backup do
   sql_server_disk_space = get_sql_disk_space(sql_server_settings['connection_string'], sql_server_settings['BackupDir'])
   sql_server_free_space = sql_server_disk_space['Available_MB'].to_f
   sql_server_disk_size = sql_server_disk_space['Total_MB'].to_f
-  alternate_share_free_space = get_disk_free_space(alternate_destination) - database_size
+  alternate_share_free_space = get_disk_free_space(default_destination) - database_size
   sql_server_free_space_percentage = sql_server_disk_size.nil? ? 'unknown ' : (sql_server_free_space / sql_server_disk_size) * 100
   Chef::Log.info "Free space on SQL server backup drive: #{sql_server_free_space_percentage.round(2)}%"
 
   backup_folder = if sql_server_free_space_percentage >= free_space_threshold
                     sql_server_settings['BackupDir']
                   elsif alternate_share_free_space > 0
-                    alternate_destination
+                    default_destination
                   else
                     raise "Failed to backup database #{database_name} due to insufficient space. \n"\
+                          "  Space after backup on #{default_destination}: #{alternate_share_free_space} \n\n"\
                           "  Space after backup on #{sql_server}: #{sql_server_free_space_percentage}% \n"\
-                          "  Space after backup on #{alternate_destination}: #{alternate_share_free_space} \n\n"\
                           '  Backup manually before retrying or specify to bypass backup in customers json.'
                   end
 
@@ -71,7 +72,7 @@ action :check_backup_status do
   backup_basename = "#{database_name}_#{Time.now.strftime('%Y%m%d')}"
 
   primary_backup_files = sql_server_backup_files(sql_server_settings, backup_basename)
-  backup_files = primary_backup_files.empty? ? get_unc_backup_files(alternate_destination, backup_basename) : primary_backup_files
+  backup_files = primary_backup_files.empty? ? get_unc_backup_files(default_destination, backup_basename) : primary_backup_files
 
   if backup_files.empty?
     node.run_state["#{database_name}_backup"] = 'incomplete'
